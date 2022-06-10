@@ -43,6 +43,9 @@ class BatchNormalization(BackendHandler):
 
     params_shape_broadcast = list([1, x_shape[1]] +
                                   [1 for _ in range(2, x_rank)])
+    # c_last_only batchnorm
+    params_shape_broadcast = list([1] + [1 for _ in range(2, x_rank)] + 
+                                  [x_shape[1]])
     if params_shape_broadcast[1] is None:
       params_shape_broadcast[1] = tf.shape(x)[1]
       params_shape_broadcast = tf.stack(params_shape_broadcast)
@@ -105,7 +108,7 @@ class BatchNormalization(BackendHandler):
     else:
       # Model is in inference mode
       inputs = [x, running_mean, running_variance, bias, scale]
-      return [cls.make_tensor_from_onnx_node(node, inputs=inputs)]
+      return [cls.make_tensor_from_onnx_node(node, inputs=inputs, c_last_only=True)]
 
   @classmethod
   def version_1(cls, node, **kwargs):
