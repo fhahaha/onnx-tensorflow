@@ -276,21 +276,70 @@ class ConvMixin(BroadcastMixin):
         ]
 
       else:
-        convolved = [
-            tf.nn.convolution(x,
+        is_dilated_num = sum(i>1 for i in dilations)
+        if is_dilated_num>1:
+            x_shape_tmp = tf_shape(xs[0])
+            paddings, crops = tf.required_space_to_batch_paddings([x_shape_tmp[-2], x_shape_tmp[-1]], dilations)
+            xs[0] = tf.space_to_batch_nd(xs[0], dilations, paddings)
+            flag = True
+            convolved = [
+                tf.nn.convolution(x,
+                              weight,
+                              padding=pad_mode,
+                              strides=strides,
+                              dilations=len(dilations)*[1],
+                              data_format=compute_format)
+                for (x, weight) in zip(xs, weight_groups)
+            ]
+        elif is_dilated_num==1 and dilations[0]>1:
+            flag = False
+            context = (weight_shape[0]-1) * dilations[0]+1
+            x_shape_tmp = tf_shape(xs[0])
+            out=tf.concat([xs[0][:,i:i+context:dilations[0]] for i in range(x_shape_tmp[1]-context+1)], 1)
+            xs[0] = out
+            convolved = [
+                tf.nn.convolution(x,
+                              weight,
+                              padding=pad_mode,
+                              strides=[strides[0] * weight_shape[0], strides[1]],
+                              dilations=len(dilations)*[1],
+                              data_format=compute_format)
+                for (x, weight) in zip(xs, weight_groups)
+            ]
+        elif is_dilated_num==1 and dilations[1]>1:
+            flag = False
+            context = (weight_shape[1]-1) * dilations[1]+1
+            x_shape_tmp = tf_shape(xs[0])
+            out=tf.concat([xs[0][:,i:i+context:dilations[1]] for i in range(x_shape_tmp[2]-context+1)], 1)
+            xs[0] = out
+            convolved = [
+                tf.nn.convolution(x,
+                              weight,
+                              padding=pad_mode,
+                              strides=[strides[0], strides[1] * weight_shape[0]],
+                              dilations=len(dilations)*[1],
+                              data_format=compute_format)
+                for (x, weight) in zip(xs, weight_groups)
+            ]
+        else:
+            flag = False
+            convolved = [
+                tf.nn.convolution(x,
                               weight,
                               padding=pad_mode,
                               strides=strides,
                               dilations=dilations,
                               data_format=compute_format)
-            for (x, weight) in zip(xs, weight_groups)
-        ]
+                for (x, weight) in zip(xs, weight_groups)
+            ]
 
     if len(node.inputs) == 2:
       if sys_config.device == 'CUDA':
         output = tf.concat(convolved, axis=1)
       else:
         output = tf.concat(convolved, axis=-1)
+        if flag:
+            output = tf.batch_to_space(output, dilations, crops)
         output = tf.transpose(output,
                               perm=get_perm_from_formats(
                                   compute_format, storage_format))
@@ -304,6 +353,8 @@ class ConvMixin(BroadcastMixin):
       else:
         output = tf.concat(convolved, axis=-1)
         output = tf.add(output, bias)
+        if flag:
+            output = tf.batch_to_space(output, dilations, paddings)
         output = tf.transpose(output,
                               perm=get_perm_from_formats(
                                   compute_format, storage_format))
