@@ -293,9 +293,9 @@ class ConvMixin(BroadcastMixin):
             ]
         elif is_dilated_num==1 and dilations[0]>1:
             flag = False
-            context = (weight_shape[0]-1) * dilations[0]+1
+            context = (weight_shape[0]-1) * dilations[0] + 1
             x_shape_tmp = tf_shape(xs[0])
-            out=tf.concat([xs[0][:,i:i+context:dilations[0]] for i in range(x_shape_tmp[1]-context+1)], 1)
+            out=tf.concat([xs[0][:, i:i+context:dilations[0]] for i in range(x_shape_tmp[1]-context+1)], 1)
             xs[0] = out
             convolved = [
                 tf.nn.convolution(x,
@@ -308,15 +308,15 @@ class ConvMixin(BroadcastMixin):
             ]
         elif is_dilated_num==1 and dilations[1]>1:
             flag = False
-            context = (weight_shape[1]-1) * dilations[1]+1
+            context = (weight_shape[1]-1) * dilations[1] + 1
             x_shape_tmp = tf_shape(xs[0])
-            out=tf.concat([xs[0][:,i:i+context:dilations[1]] for i in range(x_shape_tmp[2]-context+1)], 1)
+            out=tf.concat([xs[0][:, :, i:i+context:dilations[1]] for i in range(x_shape_tmp[2]-context+1)], 1)
             xs[0] = out
             convolved = [
                 tf.nn.convolution(x,
                               weight,
                               padding=pad_mode,
-                              strides=[strides[0], strides[1] * weight_shape[0]],
+                              strides=[strides[0], strides[1] * weight_shape[1]],
                               dilations=len(dilations)*[1],
                               data_format=compute_format)
                 for (x, weight) in zip(xs, weight_groups)
