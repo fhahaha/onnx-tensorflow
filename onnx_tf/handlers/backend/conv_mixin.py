@@ -279,7 +279,7 @@ class ConvMixin(BroadcastMixin):
         is_dilated_num = sum(i>1 for i in dilations)
         if is_dilated_num>1:
             x_shape_tmp = tf_shape(xs[0])
-            paddings, crops = tf.required_space_to_batch_paddings([x_shape_tmp[-2], x_shape_tmp[-1]], dilations)
+            paddings, crops = tf.required_space_to_batch_paddings([x_shape_tmp[1], x_shape_tmp[2]], dilations)
             xs[0] = tf.space_to_batch_nd(xs[0], dilations, paddings)
             flag = True
             convolved = [
