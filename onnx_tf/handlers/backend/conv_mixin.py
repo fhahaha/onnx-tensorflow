@@ -276,6 +276,30 @@ class ConvMixin(BroadcastMixin):
         ]
 
       else:
+        is_dilated_num = sum(i>1 for i in dilations)
+        if is_dilated_num>0:
+            context_w = (weight_shape[0]-1) * dilations[0] + 1
+            context_h = (weight_shape[1]-1) * dilations[1] + 1
+            x_shape_tmp = tf_shape(xs[0])
+
+            if dilations[0]>1:
+                indices = []
+                for i in range(x_shape_tmp[1]-context_w+1):
+                    for j in range(weight_shape[0]):
+                        indices.append(i+j*dilations[0])
+                xs[0] = tf.gather(xs[0], indices, axis=1)
+                strides[0] = strides[0] * weight_shape[0]
+                dilations[0] = 1
+
+            if dilations[1]>1:
+                indices = []
+                for i in range(x_shape_tmp[2]-context_h+1):
+                    for j in range(weight_shape[1]):
+                        indices.append(i+j*dilations[1])
+                xs[0] = tf.gather(xs[0], indices, axis=2)
+                strides[1] = strides[1] * weight_shape[1]
+                dilations[1] = 1
+
         convolved = [
             tf.nn.convolution(x,
                               weight,
